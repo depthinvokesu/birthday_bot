@@ -34,7 +34,7 @@ SELECT * from delete_cache;
 
 
 
-delete from delete_cache 
+delete from add_cache 
 
 select rowid, * from person
 

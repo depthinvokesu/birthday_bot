@@ -1,6 +1,6 @@
 import sqlite3
 
-m1 = {'chat_id':13, 'username':'user13', 'text':3}
+m1 = {'chat_id':16, 'username':'user16', 'text':'1991-09-02'}
 
 def wf(msg):
     t = msg['text']
@@ -87,17 +87,21 @@ def delete(msg):
         print("Enter numner of a person you want to delete")
         print(show_list)
     elif step_id == 2: #Number of person to delete has come
-        delete_cache = select('delete_cache', 'user_id', id, 'pers_num')
-        pers_numbers = [item['pers_num'] for item in delete_cache]
-        if t in pers_numbers:
-            pers_id = select('delete_cache', '(user_id, pers_num)', (id, t))[0]['pers_id']
-            person = select('person', 'rowid', pers_id)[0]
-            clear('person', 'rowid', pers_id)
-            clear('delete_cache', 'user_id', id)
-            clear('user_command', 'user_id', id)
-            print(f"{person['pers_name']} born in {person['pers_bday']} has been deleted")
-        else:
-            print("Wrong number, send delete to get a list")
+        try:
+            t = int(t)
+            delete_cache = select('delete_cache', 'user_id', id, 'pers_num')
+            pers_numbers = [item['pers_num'] for item in delete_cache]
+            if t in pers_numbers:
+                pers_id = select('delete_cache', '(user_id, pers_num)', (id, t))[0]['pers_id']
+                person = select('person', 'rowid', pers_id)[0]
+                clear('person', 'rowid', pers_id)
+                clear('delete_cache', 'user_id', id)
+                clear('user_command', 'user_id', id)
+                print(f"{person['pers_name']} born in {person['pers_bday']} has been deleted")
+            else:
+                print("Wrong number, send delete to get a list")
+        except ValueError:
+            print("Enter a number")
     else:
         clear('delete_cache', 'user_id', id)
         clear('user_command', 'user_id', id)
