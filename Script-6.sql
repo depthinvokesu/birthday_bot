@@ -32,7 +32,7 @@ SELECT * from user_command;
 SELECT * from add_cache;
 SELECT * from delete_cache;
 
-
+SELECT * FROM person WHERE (STRFTIME('%m', 'now'), user_id) = (STRFTIME('%m', pers_bday), 16)
 
 delete from add_cache 
 

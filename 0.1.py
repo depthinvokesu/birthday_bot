@@ -1,6 +1,6 @@
 import sqlite3
 
-m1 = {'chat_id':16, 'username':'user16', 'text':'1991-09-02'}
+m1 = {'chat_id':22, 'username':'user22', 'text':'1967-09-11'}
 
 def wf(msg):
     t = msg['text']
@@ -18,6 +18,9 @@ def wf(msg):
         clear('delete_cache', 'user_id', id)
         insert('user_command', user_id=id, cmd_id=2, step_id=1)
         delete(msg)
+    elif t == 'month':
+        r = this_month(id)
+        send_msg(id, r)
     elif len(user_command)>0: # Record with the id exists in user_command
         if user_command[0]['cmd_id'] == 1: # command_id=1 (add) for the user_id in user_command
             add(msg)
@@ -25,26 +28,26 @@ def wf(msg):
             delete(msg)
         else:
             clear('user_command', 'user_id', id)
-            show_start_msg()
+            show_start_msg(id)
     else:
-        show_start_msg()
+        show_start_msg(id)
 
 def add(msg):
-    print("ADD PROCESS HAS STARTED")
+    log_msg("ADD PROCESS HAS STARTED")
     t = msg['text']
     id = msg['chat_id']
     username = msg['username']
     user_command = select('user_command', 'user_id', id)
     step_id = user_command[0]['step_id']
-    print(f"step id is {step_id}")
+    log_msg(f"step id is {step_id}")
     if step_id == 1: # add message has come
         insert('add_cache', user_id=id, username=username)
         update('user_command', 'user_id', id, step_id=2)
-        print("Enter a person name")
+        send_msg(id, "Enter a person name")
     elif step_id == 2: # pers_name has come
         update('add_cache', 'user_id', id, pers_name=t)
         update('user_command', 'user_id', id, step_id=3)
-        print("OK, now enter a persson birthday")
+        send_msg(id, "OK, now enter a persson birthday")
     elif step_id == 3: #pers_bday has come
         update('add_cache', 'user_id', id, pers_bday=t)
         add_cache = select('add_cache', 'user_id', id)
@@ -58,22 +61,21 @@ def add(msg):
 
         clear('add_cache', 'user_id', id)
         clear('user_command', 'user_id', id)
-        print("The person has been added")
+        send_msg(id, f"{pers_name} born in {pers_bday} has been added")
     else:
         clear('add_cache', 'user_id', id)
         clear('user_command', 'user_id', id)
-        show_start_msg()
-
+        show_start_msg(id)
 
 def delete(msg):
-    print("DELETE PROCESS HAS STARTES")
+    log_msg("DELETE PROCESS HAS STARTES")
     t = msg['text']
     id = msg['chat_id']
     username = msg['username']
     user_command = select('user_command', 'user_id', id)
     step_id = user_command[0]['step_id']
-    print(f"step id is {step_id}")
-    if step_id == 1: # deletete message has come
+    log_msg(f"step id is {step_id}")
+    if step_id == 1: # delete message has come
         person_list = select('person', 'user_id', id, 'rowid as pers_id', '*')
         show_list = [] # list to display a user
         insert_list = [] # list to insert in delete_cache
@@ -84,30 +86,41 @@ def delete(msg):
         for person in insert_list:
             insert('delete_cache', **person)
         update('user_command', 'user_id', id, step_id=2)
-        print("Enter numner of a person you want to delete")
-        print(show_list)
+        send_msg(id, "Enter numner of a person you want to delete")
+        send_msg(id, show_list)
     elif step_id == 2: #Number of person to delete has come
         try:
             t = int(t)
-            delete_cache = select('delete_cache', 'user_id', id, 'pers_num')
-            pers_numbers = [item['pers_num'] for item in delete_cache]
-            if t in pers_numbers:
-                pers_id = select('delete_cache', '(user_id, pers_num)', (id, t))[0]['pers_id']
-                person = select('person', 'rowid', pers_id)[0]
-                clear('person', 'rowid', pers_id)
-                clear('delete_cache', 'user_id', id)
-                clear('user_command', 'user_id', id)
-                print(f"{person['pers_name']} born in {person['pers_bday']} has been deleted")
-            else:
-                print("Wrong number, send delete to get a list")
         except ValueError:
-            print("Enter a number")
+            send_msg(id, "Enter a number")
+            return
+        delete_cache = select('delete_cache', 'user_id', id, 'pers_num')
+        pers_numbers = [item['pers_num'] for item in delete_cache]
+        if t in pers_numbers:
+            pers_id = select('delete_cache', '(user_id, pers_num)', (id, t))[0]['pers_id']
+            person = select('person', 'rowid', pers_id)[0]
+            clear('person', 'rowid', pers_id)
+            clear('delete_cache', 'user_id', id)
+            clear('user_command', 'user_id', id)
+            send_msg(id, f"{person['pers_name']} born in {person['pers_bday']} has been deleted")
+        else:
+            send_msg(id, "Wrong number, send delete to get a list")
     else:
         clear('delete_cache', 'user_id', id)
         clear('user_command', 'user_id', id)
-        show_start_msg()
+        show_start_msg(id)
 
-
+def this_month(id):
+    con = sqlite3.connect('birthdaybot_db.sqlite3')
+    con.row_factory = sqlite3.Row
+    cur = con.cursor()
+    q = f"SELECT * from person where STRFTIME('%m', 'now') = STRFTIME('%m', pers_bday) and user_id = {id}"
+    log_msg(q)
+    cur.execute(q)
+    result = [dict(row) for row in cur.fetchall()]
+    con.commit()
+    con.close()
+    return result 
 
 def select(table, field, value, *args):
     columns = ', '.join(args) if len(args)>0 else '*'
@@ -116,7 +129,7 @@ def select(table, field, value, *args):
     con.row_factory = sqlite3.Row
     cur = con.cursor()
     q = f"SELECT {columns} FROM {table} WHERE {field} = {value}"
-    print(q)
+    log_msg(q)
     cur.execute(q)
     result = [dict(row) for row in cur.fetchall()]
     con.commit()
@@ -128,7 +141,7 @@ def clear(table, field, value):
     con = sqlite3.connect('birthdaybot_db.sqlite3')
     cur = con.cursor()
     q = f"DELETE FROM {table} WHERE {field} = {value}"
-    print(q)
+    log_msg(q)
     cur.execute(q)
     con.commit()
     con.close()
@@ -139,7 +152,7 @@ def insert(table, **kwargs):
     values = [str(v) if isinstance(v, int) else f"'{v}'" for v in kwargs.values()]
 
     q = f"INSERT INTO {table} ({', '.join(columns)}) VALUES ({(', '.join(values))})"
-    print(q)
+    log_msg(q)
 
     con = sqlite3.connect('birthdaybot_db.sqlite3')
     cur = con.cursor()
@@ -153,7 +166,7 @@ def update(table, field, value, **kwargs):
     query_params = [f"{k} = {v}" if isinstance(v, int) else f"{k} = '{v}'" for k, v in kwargs.items()]
 
     q = f"UPDATE {table} SET {', '.join(query_params)} WHERE {field} = {value}"
-    print(q)
+    log_msg(q)
 
     con = sqlite3.connect('birthdaybot_db.sqlite3')
     cur = con.cursor()
@@ -161,13 +174,16 @@ def update(table, field, value, **kwargs):
     con.commit()
     con.close()
 
-def show_start_msg():
-    print("/add - add a person, /delete - delete a person")
+def show_start_msg(id):
+    print(id, "/add - add a person, /delete - delete a person, /month - show birthdays of this month")
+
+def send_msg(id, msg):
+    print(f"> id is: {id},", f"msg is: {msg}")
+
+def log_msg(msg):
+    print(msg)
 
 
 
 wf(m1)
-# r = select('delete_cache', '(user_id, pers_num)', (7, 1))[0]['pers_id']
-# print(r)
-# clear('person', 'rowid', 10)
 
