@@ -2,19 +2,20 @@ import sqlite3
 import json
 from flask import Flask
 from flask import request
+import requests
 
-m1 = {'chat_id':22, 'username':'user22', 'text':'1967-09-11'}
 
 global TOKEN
 global URL
-TOKEN = ''
-URL = 'https://api.telegram.org/bot{TOKEN}/'
+with open('token.txt') as inf:
+    TOKEN = inf.read()
+URL = f'https://api.telegram.org/bot{TOKEN}/'
 
 app = Flask(__name__)
 
 @app.route('/', methods=['GET', 'POST'])
 def wf():
-
+    print(URL)
     if request.method == 'GET':
         print('\n RECEIVED A GET REQUEST')
         return 'RECEIVED A GET REQUEST'
@@ -22,28 +23,23 @@ def wf():
     if request.method == 'POST':
         update = request.json
         msg = update['message']
-
         t = msg['text']
         id = msg['chat']['id']
         username = msg['chat']['username']
 
-        # t = msg['text']
-        # id = msg['chat_id']
-        # username = msg['username']
-
         user_command = select('user_command', 'user_id', id)
 
-        if t == 'add':
+        if t == '/add':
             clear('user_command', 'user_id', id)
             clear('add_cache', 'user_id', id)
             insert('user_command', user_id=id, cmd_id=1, step_id=1)
             add(msg)
-        elif t == 'delete':
+        elif t == '/delete':
             clear('user_command', 'user_id', id)
             clear('delete_cache', 'user_id', id)
             insert('user_command', user_id=id, cmd_id=2, step_id=1)
             delete(msg)
-        elif t == 'month':
+        elif t == '/month':
             r = this_month(id)
             send_msg(id, r)
         elif len(user_command)>0: # Record with the id exists in user_command
@@ -123,10 +119,10 @@ def delete(msg):
         send_msg(id, "Enter numner of a person you want to delete")
         send_msg(id, show_list)
     elif step_id == 2: #Number of person to delete has come
-        try:
+        if t.isdigit():
             t = int(t)
-        except ValueError:
-            send_msg(id, "Enter a number")
+        else:
+            print("Enter a number")
             return
         delete_cache = select('delete_cache', 'user_id', id, 'pers_num')
         pers_numbers = [item['pers_num'] for item in delete_cache]
@@ -209,18 +205,26 @@ def update(table, field, value, **kwargs):
     con.close()
 
 def show_start_msg(id):
-    print(id, "/add - add a person, /delete - delete a person, /month - show birthdays of this month")
+    msg = "/add - add a person, /delete - delete a person, /month - show birthdays of this month"
+    print(id, msg)
+    send_msg(id, msg)
 
 def send_msg(id, msg):
-    print(f"> id is: {id},", f"msg is: {msg}")
+    url = URL + 'sendMessage'
+    debug_msg = f"> id is: {id}, msg is: {msg}"
+    r = requests.post(url, data={'chat_id':id, 'text':debug_msg}).json()
+    print(r)
+    print(debug_msg)
 
 def log_msg(msg):
     print(msg)
 
 
+# show_start_msg(342821779)
 
 # wf(m1)
 
 # if __name__ == "__main__":
 #     app.run()
 
+print(URL)

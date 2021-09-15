@@ -1,2 +1,5 @@
 bday_bot_veanv/
 .vscode/
+__pycache__
+temp.py
+token.txt
