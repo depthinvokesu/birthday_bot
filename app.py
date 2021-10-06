@@ -8,7 +8,7 @@ import requests
 global TOKEN
 global URL
 with open('token.txt') as inf:
-    TOKEN = inf.read()
+    TOKEN = inf.read().strip()
 URL = f'https://api.telegram.org/bot{TOKEN}/'
 
 app = Flask(__name__)
@@ -212,8 +212,8 @@ def show_start_msg(id):
 def send_msg(id, msg):
     url = URL + 'sendMessage'
     debug_msg = f"> id is: {id}, msg is: {msg}"
-    r = requests.post(url, data={'chat_id':id, 'text':debug_msg}).json()
-    print(r)
+    #r = requests.post(url, data={'chat_id':id, 'text':debug_msg}).json()
+    #print(r)
     print(debug_msg)
 
 def log_msg(msg):
@@ -224,7 +224,7 @@ def log_msg(msg):
 
 # wf(m1)
 
-# if __name__ == "__main__":
-#     app.run()
+if __name__ == "__main__":
+    app.run()
 
 print(URL)

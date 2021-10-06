@@ -1,73 +1,52 @@
 import sqlite3
 import json
-from flask import Flask
-from flask import request
+import os
 
-m1 = {'chat_id':22, 'username':'user22', 'text':'1967-09-11'}
+os.chdir('/home/unknown/Documents/birthday_bot')
 
-global TOKEN
-global URL
-TOKEN = ''
-URL = 'https://api.telegram.org/bot{TOKEN}/'
+m1 = {'chat_id':1, 'username':'user1', 'text':'month'}
 
-app = Flask(__name__)
+def wf(msg):
 
-@app.route('/', methods=['GET', 'POST'])
-def wf():
+    t = msg['text']
+    id = msg['chat_id']
+    username = msg['username']
 
-    if request.method == 'GET':
-        print('\n RECEIVED A GET REQUEST')
-        return 'RECEIVED A GET REQUEST'
+    user_command = select('user_command', 'user_id', id)
 
-    if request.method == 'POST':
-        update = request.json
-        msg = update['message']
-
-        t = msg['text']
-        id = msg['chat']['id']
-        username = msg['chat']['username']
-
-        # t = msg['text']
-        # id = msg['chat_id']
-        # username = msg['username']
-
-        user_command = select('user_command', 'user_id', id)
-
-        if t == 'add':
-            clear('user_command', 'user_id', id)
-            clear('add_cache', 'user_id', id)
-            insert('user_command', user_id=id, cmd_id=1, step_id=1)
+    if t == 'add':
+        clear('user_command', 'user_id', id)
+        clear('add_cache', 'user_id', id)
+        insert('user_command', user_id=id, cmd_id=1, step_id=1)
+        add(msg)
+    elif t == 'delete':
+        clear('user_command', 'user_id', id)
+        clear('delete_cache', 'user_id', id)
+        insert('user_command', user_id=id, cmd_id=2, step_id=1)
+        delete(msg)
+    elif t == 'month':
+        r = this_month(id)
+        send_msg(id, r)
+    elif len(user_command)>0: # Record with the id exists in user_command
+        if user_command[0]['cmd_id'] == 1: # command_id=1 (add) for the user_id in user_command
             add(msg)
-        elif t == 'delete':
-            clear('user_command', 'user_id', id)
-            clear('delete_cache', 'user_id', id)
-            insert('user_command', user_id=id, cmd_id=2, step_id=1)
+        elif user_command[0]['cmd_id'] == 2: # command_id=2 (delete) for the user_id in user_command
             delete(msg)
-        elif t == 'month':
-            r = this_month(id)
-            send_msg(id, r)
-        elif len(user_command)>0: # Record with the id exists in user_command
-            if user_command[0]['cmd_id'] == 1: # command_id=1 (add) for the user_id in user_command
-                add(msg)
-            elif user_command[0]['cmd_id'] == 2: # command_id=2 (delete) for the user_id in user_command
-                delete(msg)
-            else:
-                clear('user_command', 'user_id', id)
-                show_start_msg(id)
         else:
+            clear('user_command', 'user_id', id)
             show_start_msg(id)
-        
-        return 'RECEIVED A POST REQUEST'
+    else:
+        show_start_msg(id)
 
 
 def add(msg):
     log_msg("ADD PROCESS HAS STARTED")
-    # t = msg['text']
-    # id = msg['chat_id']
-    # username = msg['username']
     t = msg['text']
-    id = msg['chat']['id']
-    username = msg['chat']['username']    
+    id = msg['chat_id']
+    username = msg['username']
+    # t = msg['text']
+    # id = msg['chat']['id']
+    # username = msg['chat']['username']
     user_command = select('user_command', 'user_id', id)
     step_id = user_command[0]['step_id']
     log_msg(f"step id is {step_id}")
@@ -100,12 +79,12 @@ def add(msg):
 
 def delete(msg):
     log_msg("DELETE PROCESS HAS STARTES")
-    # t = msg['text']
-    # id = msg['chat_id']
-    # username = msg['username']
     t = msg['text']
-    id = msg['chat']['id']
-    username = msg['chat']['username']
+    id = msg['chat_id']
+    username = msg['username']
+    # t = msg['text']
+    # id = msg['chat']['id']
+    # username = msg['chat']['username']
     user_command = select('user_command', 'user_id', id)
     step_id = user_command[0]['step_id']
     log_msg(f"step id is {step_id}")
@@ -219,8 +198,5 @@ def log_msg(msg):
 
 
 
-# wf(m1)
-
-# if __name__ == "__main__":
-#     app.run()
+wf(m1)
 
