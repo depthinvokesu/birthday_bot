@@ -1,32 +1,30 @@
 import sqlite3
-import json
-import os
+import re
+from datetime import datetime as dt
 
-os.chdir('/home/unknown/Documents/birthday_bot')
-
-m1 = {'chat_id':1, 'username':'user1', 'text':'month'}
+m1 = {'text':'1986-10-10', 'chat':{'id':23, 'username':'user23'}}
 
 def wf(msg):
 
     t = msg['text']
-    id = msg['chat_id']
-    username = msg['username']
+    id = msg['chat']['id']
+    username = msg['chat']['username']
 
     user_command = select('user_command', 'user_id', id)
 
-    if t == 'add':
+    if t == '/add':
         clear('user_command', 'user_id', id)
         clear('add_cache', 'user_id', id)
         insert('user_command', user_id=id, cmd_id=1, step_id=1)
         add(msg)
-    elif t == 'delete':
+    elif t == '/delete':
         clear('user_command', 'user_id', id)
         clear('delete_cache', 'user_id', id)
         insert('user_command', user_id=id, cmd_id=2, step_id=1)
         delete(msg)
-    elif t == 'month':
-        r = this_month(id)
-        send_msg(id, r)
+    elif t == '/month':
+        response = this_month(id)
+        send_msg(id, response)
     elif len(user_command)>0: # Record with the id exists in user_command
         if user_command[0]['cmd_id'] == 1: # command_id=1 (add) for the user_id in user_command
             add(msg)
@@ -37,16 +35,15 @@ def wf(msg):
             show_start_msg(id)
     else:
         show_start_msg(id)
+        
 
 
 def add(msg):
     log_msg("ADD PROCESS HAS STARTED")
     t = msg['text']
-    id = msg['chat_id']
-    username = msg['username']
-    # t = msg['text']
-    # id = msg['chat']['id']
-    # username = msg['chat']['username']
+    id = msg['chat']['id']
+    username = msg['chat']['username']
+   
     user_command = select('user_command', 'user_id', id)
     step_id = user_command[0]['step_id']
     log_msg(f"step id is {step_id}")
@@ -55,23 +52,36 @@ def add(msg):
         update('user_command', 'user_id', id, step_id=2)
         send_msg(id, "Enter a person name")
     elif step_id == 2: # pers_name has come
+        if not istext(t):
+            send_msg(id, "Name should contain only letters or numbers")
+            return
         update('add_cache', 'user_id', id, pers_name=t)
         update('user_command', 'user_id', id, step_id=3)
         send_msg(id, "OK, now enter a persson birthday")
-    elif step_id == 3: #pers_bday has come
-        update('add_cache', 'user_id', id, pers_bday=t)
-        add_cache = select('add_cache', 'user_id', id)
-        id, username, pers_name, pers_bday = add_cache[0]['user_id'], add_cache[0]['username'], add_cache[0]['pers_name'], add_cache[0]['pers_bday']
-        user = select('user', 'user_id', id)
-        if len(user)>0: # there is a record in user table
+    elif step_id == 3: # pers_bday has come
+        if not isdate(t):
+            send_msg(id, "Enter a date in YYYY-MM-DD format")
+            return
+        if not ispast(t):
+            send_msg(id, "The date should be earlier than today")
+            return
+        date_obj = dt.strptime(t, '%Y-%m-%d') # parse input to a date obj
+        date_frnd = date_obj.strftime('%d %b %Y') # YYYY-MM-DD string
+        date_sql = date_obj.strftime('%Y-%m-%d') # DD Mon YYYY string
+
+        update('add_cache', 'user_id', id, pers_bday=date_sql)
+        pers_name = select('add_cache', 'user_id', id)[0]['pers_name']
+        user_tb = select('user', 'user_id', id)
+        if len(user_tb)>0: # there is a record in user table
             update('user', 'user_id', id, username=username)
         else:
             insert('user', user_id=id, username=username)
-        insert('person', pers_name=pers_name, pers_bday=pers_bday, user_id=id)
+
+        insert('person', pers_name=pers_name, pers_bday=date_sql, user_id=id)
 
         clear('add_cache', 'user_id', id)
         clear('user_command', 'user_id', id)
-        send_msg(id, f"{pers_name} born in {pers_bday} has been added")
+        send_msg(id, f"{pers_name}, born {date_frnd} has been added")
     else:
         clear('add_cache', 'user_id', id)
         clear('user_command', 'user_id', id)
@@ -80,11 +90,9 @@ def add(msg):
 def delete(msg):
     log_msg("DELETE PROCESS HAS STARTES")
     t = msg['text']
-    id = msg['chat_id']
-    username = msg['username']
-    # t = msg['text']
-    # id = msg['chat']['id']
-    # username = msg['chat']['username']
+    id = msg['chat']['id']
+    username = msg['chat']['username']
+
     user_command = select('user_command', 'user_id', id)
     step_id = user_command[0]['step_id']
     log_msg(f"step id is {step_id}")
@@ -102,22 +110,21 @@ def delete(msg):
         send_msg(id, "Enter numner of a person you want to delete")
         send_msg(id, show_list)
     elif step_id == 2: #Number of person to delete has come
-        try:
-            t = int(t)
-        except ValueError:
+        if not t.isdigit(): # returns True for int only
             send_msg(id, "Enter a number")
             return
+        input_num = int(t)
         delete_cache = select('delete_cache', 'user_id', id, 'pers_num')
         pers_numbers = [item['pers_num'] for item in delete_cache]
-        if t in pers_numbers:
-            pers_id = select('delete_cache', '(user_id, pers_num)', (id, t))[0]['pers_id']
+        if input_num in pers_numbers:
+            pers_id = select('delete_cache', '(user_id, pers_num)', (id, input_num))[0]['pers_id']
             person = select('person', 'rowid', pers_id)[0]
             clear('person', 'rowid', pers_id)
             clear('delete_cache', 'user_id', id)
             clear('user_command', 'user_id', id)
-            send_msg(id, f"{person['pers_name']} born in {person['pers_bday']} has been deleted")
+            send_msg(id, f"{person['pers_name']} born {person['pers_bday']} has been deleted")
         else:
-            send_msg(id, "Wrong number, send delete to get a list")
+            send_msg(id, "Wrong number, send /delete to get a list")
     else:
         clear('delete_cache', 'user_id', id)
         clear('user_command', 'user_id', id)
@@ -135,7 +142,7 @@ def this_month(id):
     con.close()
     return result 
 
-def select(table, field, value, *args):
+def select_orig(table, field, value, *args):
     columns = ', '.join(args) if len(args)>0 else '*'
     if not isinstance(value, int) and not isinstance(value, tuple): value = f"'{value}'"
     con = sqlite3.connect('birthdaybot_db.sqlite3')
@@ -149,13 +156,44 @@ def select(table, field, value, *args):
     con.close()
     return result
 
-def clear(table, field, value):
+def select(table, field, values: tuple, *args):
+    values = tuple([values]) if not isinstance(values, tuple) else values
+    columns = ', '.join(args) if len(args)>0 else '*'
+    qmarks = ','.join('?'*len(values))
+    # if not isinstance(value, int) and not isinstance(value, tuple): value = f"'{value}'"
+    con = sqlite3.connect('birthdaybot_db.sqlite3')
+    con.set_trace_callback(log_msg)
+    con.row_factory = sqlite3.Row
+    cur = con.cursor()
+    q = f"SELECT {columns} FROM {table} WHERE {field} = ({qmarks})"
+    log_msg(q)
+    cur.execute(q, values)
+    # cur.execute(f"SELECT {columns} FROM {table} WHERE {field} = ({qmarks})", values)
+    result = [dict(row) for row in cur.fetchall()]
+    con.commit()
+    con.close()
+    return result
+
+def clear_orig(table, field, value):
     if not isinstance(value, int): value = f"'{value}'"
     con = sqlite3.connect('birthdaybot_db.sqlite3')
     cur = con.cursor()
     q = f"DELETE FROM {table} WHERE {field} = {value}"
     log_msg(q)
     cur.execute(q)
+    con.commit()
+    con.close()
+
+def clear(table, field, value):
+    # if not isinstance(value, int): value = f"'{value}'"
+    value = tuple([value]) if not isinstance(value, tuple) else value
+    con = sqlite3.connect('birthdaybot_db.sqlite3')
+    con.set_trace_callback(log_msg)
+    con.set_trace_callback(log_msg)
+    cur = con.cursor()
+    q = f"DELETE FROM {table} WHERE {field} = ?"
+    log_msg(q)
+    cur.execute(q, value)
     con.commit()
     con.close()
 
@@ -196,7 +234,40 @@ def send_msg(id, msg):
 def log_msg(msg):
     print(msg)
 
+def isdate(date_text):
+    try:
+        dt.strptime(date_text, '%Y-%m-%d')
+    except ValueError:
+        # raise ValueError("Incorrect data format, should be YYYY-MM-DD")
+        return False
+    else:
+        return True
 
+def ispast(date_text):
+    return dt.strptime(date_text, '%Y-%m-%d') < dt.today()
+
+def istext(text):
+    p = re.compile(r'[\w+ ]+')
+    m = re.fullmatch(p, text)
+    if m:
+        return True
+    else:
+        return False
 
 wf(m1)
 
+
+# print(isdate('2021-09-31'))
+# print(ispast(dt.strptime('2021-10-08', '%Y-%m-%d')))
+
+
+# da1 = dt.strptime('1991-08-10', '%Y-%m-%d')
+# print(da1)
+# da2 = datetime.datetime.today()
+# print(da2)
+# # print(da1 < da2)
+# print(da1.strftime("%d %b %Y"))
+# print(dt.strftime(dt.today(), '%Y-%m-%d'))
+# print(da1.strftime("%d %b %Y"))
+# print(ispast('2022-08-10'))
+# print(da1.strftime('%Y-%m-%d'))

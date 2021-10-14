@@ -25,6 +25,8 @@ create table user_command (
   step_id integer
   );
  
+
+ 
  
 SELECT * from user;
 SELECT * from person;

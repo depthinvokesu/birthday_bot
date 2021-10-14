@@ -40,8 +40,8 @@ def wf():
             insert('user_command', user_id=id, cmd_id=2, step_id=1)
             delete(msg)
         elif t == '/month':
-            r = this_month(id)
-            send_msg(id, r)
+            response = this_month(id)
+            send_msg(id, response)
         elif len(user_command)>0: # Record with the id exists in user_command
             if user_command[0]['cmd_id'] == 1: # command_id=1 (add) for the user_id in user_command
                 add(msg)
