@@ -26,15 +26,31 @@ create table user_command (
   );
  
 
- 
- 
 SELECT * from user;
 SELECT * from person;
 SELECT * from user_command;
 SELECT * from add_cache;
 SELECT * from delete_cache;
 
-SELECT * FROM person WHERE (STRFTIME('%m', 'now'), user_id) = (STRFTIME('%m', pers_bday), 16)
+
+update delete_cache set (pers_num, pers_id) = (3, 33) where (user_id, pers_id) = (4, 4)
+
+delete from person where (user_id, pers_name) = (23, 'Person of Sep27')
+
+SELECT * FROM person where (user_id, pers_name) = (17, 'Hugh Grant')
+
+insert into delete_cache values (4,5,6)
+
+
+
+SELECT * FROM person WHERE (STRFTIME('%m', 'now'), user_id) = (STRFTIME('%m', pers_bday), 12)
+
+SELECT * FROM person WHERE (STRFTIME('%m', pers_bday), user_id) = ('10', 12)
+
+
+select STRFTIME('%m', pers_bday) from person;
+select STRFTIME('%m', 'now')
+
 
 delete from add_cache 
 
