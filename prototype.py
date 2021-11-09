@@ -65,7 +65,7 @@ def add(id, text, username):
         # Inserting the input to the cache table, incrementing step_id and sending a message with result
         update(table='add_cache', set={'pers_name':text}, where={'user_id':id})
         update(table='user_command', set={'step_id':3}, where={'user_id':id})
-        send_msg(id, "OK, now enter a persson birthday (YYYY-MM-DD)")
+        send_msg(id, f"OK, now enter {text}'s birthday (YYYY-MM-DD)")
 
     elif step_id == 3: # pers_bday has come
 
