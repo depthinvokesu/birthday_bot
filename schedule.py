@@ -1,7 +1,7 @@
 import sqlite3
 import os
 
-os.chdir('/home/unknown/Documents/birthday_bot')
+# os.chdir('/home/unknown/Documents/birthday_bot')
 
 def get_today_bdays():
     con = sqlite3.connect('birthdaybot_db.sqlite3')

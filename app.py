@@ -198,9 +198,9 @@ def show_start_msg(id):
 def send_msg(id, msg):
     url = URL + 'sendMessage'
     debug_msg = f">>> id is: {id}, msg is: {msg}"
-    r = requests.post(url, data={'chat_id':id, 'text':debug_msg}).json()
-    print(r)
-    print(debug_msg)
+    r = requests.post(url, data={'chat_id':id, 'text':msg}).json()
+    log_msg("Telegram response: ", r)
+    log_msg(debug_msg)
 
 def log_msg(msg):
     print(msg)
@@ -337,4 +337,3 @@ def update(table: str, set: dict, where: dict):
 if __name__ == "__main__":
     app.run()
 
-print(URL)
