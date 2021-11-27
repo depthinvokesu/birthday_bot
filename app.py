@@ -17,8 +17,7 @@ URL = f'https://api.telegram.org/bot{TOKEN}/'
 app = Flask(__name__)
 
 @app.route('/', methods=['GET', 'POST'])
-def wf():
-    print(URL)
+def workflow():
 
     if request.method == 'GET':
         print('\n RECEIVED A GET REQUEST')
@@ -26,28 +25,65 @@ def wf():
 
     if request.method == 'POST':
         update = request.json
+        if 'message' not in update:
+            return "No message key"
         msg = update['message']
+
+        if 'text' not in msg:
+            return "No text key"
         text = msg['text']
+
+        if 'chat' not in msg:
+            return "No chat key"
+        text = msg['text']        
+
+        if 'id' not in msg['chat']:
+            return "No id key"
         id = msg['chat']['id']
-        username = msg['chat']['username']
+
+        if 'username' not in msg['chat']:
+            username = ""
+        else:
+            username = msg['chat']['username']
 
         user_command = select_one(table='user_command', where={'user_id':id}) # {user_id: x, cmd_id: y, step_id: z}
 
         if text == '/add':
             clear(table='user_command', where={'user_id':id})
             clear(table='add_cache', where={'user_id':id})
+            clear(table='delete_cache', where={'user_id':id})
             insert(table='user_command', data={'user_id': id, 'cmd_id': 1, 'step_id': 1})
             add(id, text, username)
 
         elif text == '/delete':
             clear(table='user_command', where={'user_id':id})
+            clear(table='add_cache', where={'user_id':id})
             clear(table='delete_cache', where={'user_id':id})
             insert(table='user_command', data={'user_id': id, 'cmd_id': 2, 'step_id': 1})
             delete(id, text)
 
         elif text == '/month':
+            clear(table='user_command', where={'user_id':id})
+            clear(table='add_cache', where={'user_id':id})
+            clear(table='delete_cache', where={'user_id':id})
             response = this_month(id)
-            send_msg(id, response)
+            if response:
+                send_msg(id, response)
+            else:
+                send_msg(id, "No one celebrates birthday this month")
+        
+        elif text == '/help':
+            clear(table='user_command', where={'user_id':id})
+            clear(table='add_cache', where={'user_id':id})
+            clear(table='delete_cache', where={'user_id':id})
+            msg = """Hello, I am a Birthday bot! 
+I can help you to keep track of your friends birthdays. 
+Just tell the dates and I will notify you once it's time to congratulate ;)
+Command list:
+/add - add a person
+/delete - delete a person
+/month - show birthdays of this month"""
+            send_msg(id, msg)
 
         elif user_command: # Record with the id exists in user_command
             if user_command['cmd_id'] == 1: # command_id=1 (add) for the user_id in user_command
@@ -102,7 +138,7 @@ def add(id, text, username):
         
         # Converting the date
         date_obj = dt.strptime(text, '%Y-%m-%d') # parse input to a date obj
-        date_frnd = date_obj.strftime('%d %b %Y') # Mon YYYY string
+        date_frnd = date_obj.strftime('%d %b %Y') # DD Mon YYYY string
         date_sql = date_obj.strftime('%Y-%m-%d') # YYYY-MM-DD string DD
 
         # Inserting the input to the cache table
@@ -137,6 +173,10 @@ def delete(id, text):
 
         # Composing lists of people for current user
         person_tb = select_all(table='person', where={'user_id':id}, columns=['rowid as pers_id', '*']) # [{pers_name, pers_bday, user_id, pers_id}, ...]
+        if len(person_tb) == 0: # there is no one in person table
+            send_msg(id, "There is no one to delete")
+            return
+
         show_list = [] # list to show to the user
         insert_list = [] # list to insert into delete_cache
 
@@ -145,6 +185,7 @@ def delete(id, text):
             person['pers_num'] = number+1 # ordinal number when showing to the user
             show_list.append({'pers_num':person['pers_num'], 'pers_name':person['pers_name'], 'pers_bday':person['pers_bday']})
             insert_list.append({'pers_num':person['pers_num'], 'pers_id':person['pers_id'], 'user_id':person['user_id']})
+        show_list_str = '\n'.join([f"{item['pers_num']} {item['pers_name']} {item['pers_bday']}" for item in show_list])
         
         # Inserting the list into delete_cache table
         for person in insert_list:
@@ -152,8 +193,7 @@ def delete(id, text):
 
         # Incrementing step_id and sending a message with result
         update(table='user_command', set={'step_id': 2}, where={'user_id': id})
-        send_msg(id, "Enter numner of a person you want to delete")
-        send_msg(id, show_list)
+        send_msg(id, f"Enter a number of a person you want to delete:\n{show_list_str}")
 
     elif step_id == 2: # Number of person to delete has come
 
@@ -189,18 +229,22 @@ def delete(id, text):
 def this_month(id):
     month = str(dt.now().month)
     result = select_all(table='person', where={"user_id": id, "STRFTIME('%m', pers_bday)": month})
-    return result
+    if len(result) == 0:
+        return None
+    else:
+        return '\n'.join([f"{item['pers_name']} {item['pers_bday']}" for item in result])
 
 def show_start_msg(id):
-    msg = "/add - add a person, /delete - delete a person, /month - show birthdays of this month"
+    msg = "Command list: \n/add - add a person \n/delete - delete a person \n/month - show birthdays of this month"
     send_msg(id, msg)
 
 def send_msg(id, msg):
     url = URL + 'sendMessage'
-    debug_msg = f">>> id is: {id}, msg is: {msg}"
-    r = requests.post(url, data={'chat_id':id, 'text':msg}).json()
-    log_msg("Telegram response: ", r)
-    log_msg(debug_msg)
+    debug_msg = f"id is: {id}, msg is: {msg}"
+    tg_msg = f"{msg}"
+    resp = requests.post(url, data={'chat_id':id, 'text':tg_msg, 'parse_mode':'HTML'}).json()
+    log_msg(f">>> Telegram response: {resp}")
+    log_msg(f">>> Debug message: {debug_msg}")
 
 def log_msg(msg):
     print(msg)
@@ -240,7 +284,7 @@ def select_all(table: str, where: dict, columns=['*']) -> list:
     con.set_trace_callback(log_msg)
     con.row_factory = sqlite3.Row
     cur = con.cursor()
-    log_msg(q)
+    # log_msg(q)
     cur.execute(q, where_vals)
     result = [dict(row) for row in cur.fetchall()]
     con.commit()
@@ -262,7 +306,7 @@ def select_one(table: str, where: dict, columns=['*']) -> dict:
     con.set_trace_callback(log_msg)
     con.row_factory = sqlite3.Row
     cur = con.cursor()
-    log_msg(q)
+    # log_msg(q)
     cur.execute(q, where_vals)
     result = cur.fetchone()
     con.commit()
@@ -283,7 +327,7 @@ def clear(table: str, where: dict):
     con.set_trace_callback(log_msg)
     con.row_factory = sqlite3.Row
     cur = con.cursor()
-    log_msg(q)
+    # log_msg(q)
     cur.execute(q, where_vals)
     con.commit()
     con.close()
@@ -302,7 +346,7 @@ def insert(table: str, data: dict):
     con.set_trace_callback(log_msg)
     con.row_factory = sqlite3.Row
     cur = con.cursor()
-    log_msg(q)
+    # log_msg(q)
     cur.execute(q, vals)
     con.commit()
     con.close()
@@ -325,14 +369,11 @@ def update(table: str, set: dict, where: dict):
     con.set_trace_callback(log_msg)
     con.row_factory = sqlite3.Row
     cur = con.cursor()
-    log_msg(q)
+    # log_msg(q)
     cur.execute(q, [*set_vals, *where_vals])
     con.commit()
     con.close()
 
-# show_start_msg(342821779)
-
-# wf(m1)
 
 if __name__ == "__main__":
     app.run()

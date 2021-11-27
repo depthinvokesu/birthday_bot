@@ -79,7 +79,7 @@ def add(id, text, username):
         
         # Converting the date
         date_obj = dt.strptime(text, '%Y-%m-%d') # parse input to a date obj
-        date_frnd = date_obj.strftime('%d %b %Y') # Mon YYYY string
+        date_frnd = date_obj.strftime('%d %b %Y') # DD Mon YYYY string
         date_sql = date_obj.strftime('%Y-%m-%d') # YYYY-MM-DD string DD
 
         # Inserting the input to the cache table
@@ -114,6 +114,10 @@ def delete(id, text):
 
         # Composing lists of people for current user
         person_tb = select_all(table='person', where={'user_id':id}, columns=['rowid as pers_id', '*']) # [{pers_name, pers_bday, user_id, pers_id}, ...]
+        if len(person_tb) == 0: # there is no one in person table
+            send_msg(id, "There is no one to delete")
+            return
+
         show_list = [] # list to show to the user
         insert_list = [] # list to insert into delete_cache
 
@@ -129,7 +133,7 @@ def delete(id, text):
 
         # Incrementing step_id and sending a message with result
         update(table='user_command', set={'step_id': 2}, where={'user_id': id})
-        send_msg(id, "Enter numner of a person you want to delete")
+        send_msg(id, "Enter a number of a person you want to delete")
         send_msg(id, show_list)
 
     elif step_id == 2: # Number of person to delete has come

@@ -1,7 +1,14 @@
 import sqlite3
+import requests
 import os
 
 # os.chdir('/home/unknown/Documents/birthday_bot')
+
+global TOKEN
+global URL
+with open('token.txt') as inf:
+    TOKEN = inf.read().strip()
+URL = f'https://api.telegram.org/bot{TOKEN}/'
 
 def get_today_bdays():
     con = sqlite3.connect('birthdaybot_db.sqlite3')
@@ -28,7 +35,12 @@ def log_msg(msg):
     print(msg)
 
 def send_msg(id, msg):
-    print(f"> id is: {id},", f"msg is: {msg}")
+    url = URL + 'sendMessage'
+    debug_msg = f"id is: {id}, msg is: {msg}"
+    tg_msg = f"{msg}"
+    resp = requests.post(url, data={'chat_id':id, 'text':tg_msg, 'parse_mode':'HTML'}).json()
+    log_msg(f">>> Telegram response: {resp}")
+    log_msg(f">>> Debug message: {debug_msg}")
 
 bday_people = get_today_bdays()
 for item in bday_people:

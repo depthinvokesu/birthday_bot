@@ -1,8 +1,11 @@
 import sqlite3
 import re
 from datetime import datetime as dt
+from sql_tools import *
 
-m1 = {'text':'1986-10-10', 'chat':{'id':23, 'username':'user23'}}
+db_name = 'birthdaybot_db.sqlite3'
+
+m1 = {'text':'/month', 'chat':{'id':24, 'username':'user24'}}
 
 def wf(msg):
 
@@ -57,7 +60,7 @@ def add(msg):
             return
         update('add_cache', 'user_id', id, pers_name=t)
         update('user_command', 'user_id', id, step_id=3)
-        send_msg(id, "OK, now enter a persson birthday")
+        send_msg(id, "OK, now enter a persson birthday (YYYY-MM-DD)")
     elif step_id == 3: # pers_bday has come
         if not isdate(t):
             send_msg(id, "Enter a date in YYYY-MM-DD format")
@@ -131,7 +134,7 @@ def delete(msg):
         show_start_msg(id)
 
 def this_month(id):
-    con = sqlite3.connect('birthdaybot_db.sqlite3')
+    con = sqlite3.connect(db_name)
     con.row_factory = sqlite3.Row
     cur = con.cursor()
     q = f"SELECT * from person where STRFTIME('%m', 'now') = STRFTIME('%m', pers_bday) and user_id = {id}"
@@ -142,88 +145,6 @@ def this_month(id):
     con.close()
     return result 
 
-def select_orig(table, field, value, *args):
-    columns = ', '.join(args) if len(args)>0 else '*'
-    if not isinstance(value, int) and not isinstance(value, tuple): value = f"'{value}'"
-    con = sqlite3.connect('birthdaybot_db.sqlite3')
-    con.row_factory = sqlite3.Row
-    cur = con.cursor()
-    q = f"SELECT {columns} FROM {table} WHERE {field} = {value}"
-    log_msg(q)
-    cur.execute(q)
-    result = [dict(row) for row in cur.fetchall()]
-    con.commit()
-    con.close()
-    return result
-
-def select(table, field, values: tuple, *args):
-    values = tuple([values]) if not isinstance(values, tuple) else values
-    columns = ', '.join(args) if len(args)>0 else '*'
-    qmarks = ','.join('?'*len(values))
-    # if not isinstance(value, int) and not isinstance(value, tuple): value = f"'{value}'"
-    con = sqlite3.connect('birthdaybot_db.sqlite3')
-    con.set_trace_callback(log_msg)
-    con.row_factory = sqlite3.Row
-    cur = con.cursor()
-    q = f"SELECT {columns} FROM {table} WHERE {field} = ({qmarks})"
-    log_msg(q)
-    cur.execute(q, values)
-    # cur.execute(f"SELECT {columns} FROM {table} WHERE {field} = ({qmarks})", values)
-    result = [dict(row) for row in cur.fetchall()]
-    con.commit()
-    con.close()
-    return result
-
-def clear_orig(table, field, value):
-    if not isinstance(value, int): value = f"'{value}'"
-    con = sqlite3.connect('birthdaybot_db.sqlite3')
-    cur = con.cursor()
-    q = f"DELETE FROM {table} WHERE {field} = {value}"
-    log_msg(q)
-    cur.execute(q)
-    con.commit()
-    con.close()
-
-def clear(table, field, value):
-    # if not isinstance(value, int): value = f"'{value}'"
-    value = tuple([value]) if not isinstance(value, tuple) else value
-    con = sqlite3.connect('birthdaybot_db.sqlite3')
-    con.set_trace_callback(log_msg)
-    con.set_trace_callback(log_msg)
-    cur = con.cursor()
-    q = f"DELETE FROM {table} WHERE {field} = ?"
-    log_msg(q)
-    cur.execute(q, value)
-    con.commit()
-    con.close()
-
-def insert(table, **kwargs):
-
-    columns = list(kwargs.keys())
-    values = [str(v) if isinstance(v, int) else f"'{v}'" for v in kwargs.values()]
-
-    q = f"INSERT INTO {table} ({', '.join(columns)}) VALUES ({(', '.join(values))})"
-    log_msg(q)
-
-    con = sqlite3.connect('birthdaybot_db.sqlite3')
-    cur = con.cursor()
-    cur.execute(q)
-    con.commit()
-    con.close()
-
-def update(table, field, value, **kwargs):
-
-    if not isinstance(value, int): value = f"'{value}'"
-    query_params = [f"{k} = {v}" if isinstance(v, int) else f"{k} = '{v}'" for k, v in kwargs.items()]
-
-    q = f"UPDATE {table} SET {', '.join(query_params)} WHERE {field} = {value}"
-    log_msg(q)
-
-    con = sqlite3.connect('birthdaybot_db.sqlite3')
-    cur = con.cursor()
-    cur.execute(q)
-    con.commit()
-    con.close()
 
 def show_start_msg(id):
     print(id, "/add - add a person, /delete - delete a person, /month - show birthdays of this month")
@@ -257,17 +178,3 @@ def istext(text):
 wf(m1)
 
 
-# print(isdate('2021-09-31'))
-# print(ispast(dt.strptime('2021-10-08', '%Y-%m-%d')))
-
-
-# da1 = dt.strptime('1991-08-10', '%Y-%m-%d')
-# print(da1)
-# da2 = datetime.datetime.today()
-# print(da2)
-# # print(da1 < da2)
-# print(da1.strftime("%d %b %Y"))
-# print(dt.strftime(dt.today(), '%Y-%m-%d'))
-# print(da1.strftime("%d %b %Y"))
-# print(ispast('2022-08-10'))
-# print(da1.strftime('%Y-%m-%d'))

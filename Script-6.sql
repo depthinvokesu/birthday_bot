@@ -1,3 +1,5 @@
+/*
+
 CREATE table user (
  user_id integer primary key,
  username varchar
@@ -25,6 +27,7 @@ create table user_command (
   step_id integer
   );
  
+*/
 
 SELECT * from user;
 SELECT * from person;
@@ -32,7 +35,7 @@ SELECT * from user_command;
 SELECT * from add_cache;
 SELECT * from delete_cache;
 
-
+/*
 update delete_cache set (pers_num, pers_id) = (3, 33) where (user_id, pers_id) = (4, 4)
 
 delete from person where (user_id, pers_name) = (23, 'Person of Sep27')
@@ -61,3 +64,4 @@ insert into delete_cache (user_id, pers_id, pers_num) values (1,1,1), (2,2,2)
 update add_cache 
 set pers_name = 'Buddha', pers_bday='1000-02-03'
 where user_id = 18
+*/

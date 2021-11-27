@@ -81,8 +81,8 @@ def insert(table: str, data: dict):
     """INSERT INTO table (key1, key2...) VALUES (val1, val2...) """
 
     keys = ','.join(data.keys()) # str: "key1, key2 ..."
-    vals = list(data.values()) # str: "val1, val2 ..."
-    qmarks = ','.join('?'*len(vals)) # palceholders for values, str: "?, ? ..."
+    vals = list(data.values()) # list: "val1, val2 ..."
+    qmarks = ','.join('?'*len(vals)) # str, palceholders for values: "?, ? ..."
 
     q = f"INSERT INTO {table} ({keys}) VALUES ({qmarks})"
     
