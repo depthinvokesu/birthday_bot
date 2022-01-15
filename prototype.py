@@ -168,7 +168,7 @@ def delete(id, text):
         show_start_msg(id)
 
 def this_month(id):
-    month = str(dt.now().month)
+    month = dt.now().strftime("%m")
     result = select_all(table='person', where={"user_id": id, "STRFTIME('%m', pers_bday)": month})
     return result
 
@@ -204,14 +204,13 @@ def istext(text):
 
 def select_all(table: str, where: dict, columns=['*']) -> list:
 
-    """SELECT [* | col1, col2...] FROM table WHERE (w_key1, w_key2...) = (w_val1, w_val2...)"""
+    """SELECT [* | col1, col2...] FROM table WHERE w_key1=w_val1 AND w_key2=w_val2 ..."""
 
     columns = ','.join(columns) # str: "col1, col2 ..."
-    where_keys = ','.join(where.keys()) # str: "w_key1, w_key2 ..."
     where_vals = list(where.values()) # list: [w_val1, w_val2 ...]
-    where_qmrks = ','.join('?'*len(where_vals)) # palceholders for values, str: "?, ? ..."
+    where_clause = " AND ".join([f"{item}=?" for item in where.keys()]) # str: "w_key1=? AND w_key2=?"
 
-    q = f"SELECT {columns} FROM {table} WHERE ({where_keys}) = ({where_qmrks})"
+    q = f"SELECT {columns} FROM {table} WHERE {where_clause}"
 
     con = sqlite3.connect(db_name)
     con.set_trace_callback(log_msg)
@@ -226,14 +225,13 @@ def select_all(table: str, where: dict, columns=['*']) -> list:
 
 def select_one(table: str, where: dict, columns=['*']) -> dict:
 
-    """SELECT [* | col1, col2...] FROM table WHERE (w_key1, w_key2...) = (w_val1, w_val2...)"""
+    """SELECT [* | col1, col2...] FROM table WHERE w_key1=w_val1 AND w_key2=w_val2 ..."""
 
     columns = ','.join(columns) # str: "col1, col2 ..."
-    where_keys = ','.join(where.keys()) # str: "w_key1, w_key2 ..."
     where_vals = list(where.values()) # list: [w_val1, w_val2 ...]
-    where_qmrks = ','.join('?'*len(where_vals)) # palceholders for values, str: "?, ? ..."
+    where_clause = " AND ".join([f"{item}=?" for item in where.keys()]) # str: "w_key1=? AND w_key2=?"
 
-    q = f"SELECT {columns} FROM {table} WHERE ({where_keys}) = ({where_qmrks})"
+    q = f"SELECT {columns} FROM {table} WHERE {where_clause}"
 
     con = sqlite3.connect(db_name)
     con.set_trace_callback(log_msg)
@@ -248,13 +246,12 @@ def select_one(table: str, where: dict, columns=['*']) -> dict:
 
 def clear(table: str, where: dict):
 
-    """DELETE FROM table WHERE (w_key1, w_key2...) = (w_val1, w_val2...)"""
+    """DELETE FROM table WHERE w_key1=w_val1 AND w_key2=w_val2 ..."""
 
-    where_keys = ','.join(where.keys()) # str: "w_key1, w_key2 ..."
-    where_vals = list(where.values()) # str: "w_val1, w_val2 ..."
-    where_qmrks = ','.join('?'*len(where_vals)) # palceholders for values, str: "?, ? ..."
+    where_vals = list(where.values()) # list: [w_val1, w_val2 ...]
+    where_clause = " AND ".join([f"{item}=?" for item in where.keys()]) # str: "w_key1=? AND w_key2=?"
 
-    q = f"DELETE FROM {table} WHERE ({where_keys}) = ({where_qmrks})"
+    q = f"DELETE FROM {table} WHERE {where_clause}"
 
     con = sqlite3.connect(db_name)
     con.set_trace_callback(log_msg)
@@ -274,7 +271,7 @@ def insert(table: str, data: dict):
     qmarks = ','.join('?'*len(vals)) # palceholders for values, str: "?, ? ..."
 
     q = f"INSERT INTO {table} ({keys}) VALUES ({qmarks})"
-    
+
     con = sqlite3.connect(db_name)
     con.set_trace_callback(log_msg)
     con.row_factory = sqlite3.Row
@@ -286,27 +283,24 @@ def insert(table: str, data: dict):
 
 def update(table: str, set: dict, where: dict):
 
-    """UPDATE table SET (s_key1, s_key2...) = (s_val1, s_val2...) WHERE (w_key1, w_key2...) = (w_val1, w_val2...)"""
+    """UPDATE table SET s_key1=s_val1 AND s_key2=s_val2 ... WHERE w_key1=w_val1 AND w_key2=w_val2 ..."""
 
-    set_keys = ','.join(set.keys()) # str: "s_key1, s_key2 ..."
     set_vals = list(set.values()) # str: "s_val1, s_val2 ..."
-    set_qmarks = ','.join('?'*len(set_vals)) # palceholders for values, str: "?, ? ..."
+    set_clause = " AND ".join([f"{item}=?" for item in set.keys()]) # str: "s_key1=? AND s_key2=?"
 
-    where_keys = ','.join(where.keys()) # str: "w_key1, w_key2 ..."
-    where_vals = list(where.values()) # str: "w_val1, w_val2 ..."
-    where_qmrks = ','.join('?'*len(where_vals)) # palceholders for values, str: "?, ? ..."
+    where_vals = list(where.values()) # list: [w_val1, w_val2 ...]
+    where_clause = " AND ".join([f"{item}=?" for item in where.keys()]) # str: "key1=? AND key2=? ..."
 
-    q = f"UPDATE {table} SET ({set_keys}) = ({set_qmarks}) WHERE ({where_keys}) = ({where_qmrks})"
+    q = f"UPDATE {table} SET {set_clause} WHERE {where_clause}"
 
     con = sqlite3.connect(db_name)
-    con.set_trace_callback(log_msg)
+    #con.set_trace_callback(log_msg)
     con.row_factory = sqlite3.Row
     cur = con.cursor()
     log_msg(q)
     cur.execute(q, [*set_vals, *where_vals])
     con.commit()
     con.close()
-
 
 wf(m1)
 
