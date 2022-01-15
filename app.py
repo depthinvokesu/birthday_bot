@@ -16,10 +16,11 @@ global URL
 with open('token.txt') as inf:
     TOKEN = inf.read().strip()
 URL = f'https://api.telegram.org/bot{TOKEN}/'
+app_path = '/'+TOKEN
 
 app = Flask(__name__)
 
-@app.route('/', methods=['GET', 'POST'])
+@app.route(app_path, methods=['GET', 'POST'])
 def workflow():
 
     if request.method == 'GET':
