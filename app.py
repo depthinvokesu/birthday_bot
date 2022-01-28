@@ -7,7 +7,7 @@ from SQLtools import SQLtools
 import re
 import os
 
-# os.chdir('/home/pdv/birthday_bot/')
+os.chdir('/home/pdv/birthday_bot/')
 def log_msg(msg):
     print(msg)
 
