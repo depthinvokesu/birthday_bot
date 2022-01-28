@@ -18,10 +18,10 @@ class SQLtools():
         q = f"SELECT {columns} FROM {table} WHERE {where_clause}"
 
         con = sqlite3.connect(self.db_name)
-        con.set_trace_callback(self.callback_func)
+        # con.set_trace_callback(self.callback_func) # Output logs
         con.row_factory = sqlite3.Row
         cur = con.cursor()
-        self.callback_func(q)
+        # self.callback_func(q) # Output logs
         cur.execute(q, where_vals)
         result = [dict(row) for row in cur.fetchall()]
         con.commit()
@@ -39,10 +39,10 @@ class SQLtools():
         q = f"SELECT {columns} FROM {table} WHERE {where_clause}"
 
         con = sqlite3.connect(self.db_name)
-        con.set_trace_callback(self.callback_func)
+        # con.set_trace_callback(self.callback_func) # Output logs
         con.row_factory = sqlite3.Row
         cur = con.cursor()
-        self.callback_func(q)
+        # self.callback_func(q) # Output logs
         cur.execute(q, where_vals)
         result = cur.fetchone()
         con.commit()
@@ -59,10 +59,10 @@ class SQLtools():
         q = f"DELETE FROM {table} WHERE {where_clause}"
 
         con = sqlite3.connect(self.db_name)
-        con.set_trace_callback(self.callback_func)
+        # con.set_trace_callback(self.callback_func) # Output logs
         con.row_factory = sqlite3.Row
         cur = con.cursor()
-        self.callback_func(q)
+        # self.callback_func(q) # Output logs
         cur.execute(q, where_vals)
         con.commit()
         con.close()
@@ -78,10 +78,10 @@ class SQLtools():
         q = f"INSERT INTO {table} ({keys}) VALUES ({qmarks})"
 
         con = sqlite3.connect(self.db_name)
-        con.set_trace_callback(self.callback_func)
+        # con.set_trace_callback(self.callback_func) # Output logs
         con.row_factory = sqlite3.Row
         cur = con.cursor()
-        self.callback_func(q)
+        # self.callback_func(q) # Output logs
         cur.execute(q, vals)
         con.commit()
         con.close()
@@ -99,18 +99,10 @@ class SQLtools():
         q = f"UPDATE {table} SET {set_clause} WHERE {where_clause}"
 
         con = sqlite3.connect(self.db_name)
-        #con.set_trace_callback(self.callback_func)
+        # con.set_trace_callback(self.callback_func) # Output logs
         con.row_factory = sqlite3.Row
         cur = con.cursor()
-        self.callback_func(q)
+        # self.callback_func(q) # Output logs
         cur.execute(q, [*set_vals, *where_vals])
         con.commit()
         con.close()
-
-# ob1 = SQLtools(db_name="birthdaybot_db.sqlite3")
-
-# print(ob1.db_name)
-# # ob1.insert(table="user", data={"user_id": 2})
-# ob1.update(table="user", set={"username":"user2"}, where={"user_id":2})
-# res = ob1.select_all(table="user", where={"user_id":2})
-# print(res)

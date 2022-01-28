@@ -1,6 +1,7 @@
-import re
+
 from datetime import datetime as dt
 from SQLtools import SQLtools
+import re
 
 def log_msg(msg):
     print(msg)
@@ -8,9 +9,9 @@ def log_msg(msg):
 sql = SQLtools(db_name='birthdaybot_db.sqlite3', callback_func=log_msg)
 
 
-m1 = {'text':'/all', 'chat':{'id':4, 'username':'user13'}}
+m1 = {'text':'/help', 'chat':{'id':4, 'username':'user13'}}
 
-def wf(msg):
+def workflow(msg):
 
     text = msg['text']
     id = msg['chat']['id']
@@ -21,22 +22,43 @@ def wf(msg):
     if text == '/add':
         sql.delete(table='user_command', where={'user_id':id})
         sql.delete(table='add_cache', where={'user_id':id})
+        sql.delete(table='delete_cache', where={'user_id':id})
         sql.insert(table='user_command', data={'user_id': id, 'cmd_id': 1, 'step_id': 1})
         add_person(id, text, username)
 
     elif text == '/delete':
         sql.delete(table='user_command', where={'user_id':id})
+        sql.delete(table='add_cache', where={'user_id':id})
         sql.delete(table='delete_cache', where={'user_id':id})
         sql.insert(table='user_command', data={'user_id': id, 'cmd_id': 2, 'step_id': 1})
         delete_person(id, text)
 
     elif text == '/month':
+        sql.delete(table='user_command', where={'user_id':id})
+        sql.delete(table='add_cache', where={'user_id':id})
+        sql.delete(table='delete_cache', where={'user_id':id})
         response = this_month(id)
-        send_msg(id, response)
+        if response:
+            send_msg(id, response)
+        else:
+            send_msg(id, "No one celebrates birthday this month")
 
-    elif text == '/list' or '/all':
-        response = sql.select_all(table="person", where={"user_id":id})
-        send_msg(id, response)
+    elif text in ('/list', '/all'):
+            sql.delete(table='user_command', where={'user_id':id})
+            sql.delete(table='add_cache', where={'user_id':id})
+            sql.delete(table='delete_cache', where={'user_id':id})            
+            response = list_all(id)
+            if response:
+                send_msg(id, response)
+            else:
+                send_msg(id, "You didn't add anybody yet")
+
+    elif text == '/help':
+        sql.delete(table='user_command', where={'user_id':id})
+        sql.delete(table='add_cache', where={'user_id':id})
+        sql.delete(table='delete_cache', where={'user_id':id})
+        msg = "Hello, I am a Birthday bot! \nI can help you to keep track of your friends birthdays. \nJust tell me the dates and I will notify you once it's time to congratulate ;) \nCommand list: \n/add - add a person \n/delete - delete a person \n/month - show birthdays of this month \n/list or /all - show the people you've added"
+        send_msg(id, msg)
 
     elif user_command: # Record with the id exists in user_command
         if user_command['cmd_id'] == 1: # command_id=1 (add) for the user_id in user_command
@@ -114,6 +136,7 @@ def add_person(id, text, username):
         show_start_msg(id)
 
 def delete_person(id, text):
+    log_msg("DELETE PROCESS HAS STARTED")
 
     step_id = sql.select_one(table='user_command', where={'user_id':id})['step_id']
     log_msg(f"step id is {step_id}")
@@ -124,6 +147,9 @@ def delete_person(id, text):
         person_tb = sql.select_all(table='person', where={'user_id':id}, columns=['rowid as pers_id', '*']) # [{pers_name, pers_bday, user_id, pers_id}, ...]
         if len(person_tb) == 0: # there is no one in person table
             send_msg(id, "There is no one to delete")
+            sql.delete(table='delete_cache', where={'user_id':id})
+            sql.delete(table='user_command', where={'user_id':id})
+            show_start_msg(id)
             return
 
         show_list = [] # list to show to the user
@@ -134,15 +160,15 @@ def delete_person(id, text):
             person['pers_num'] = number+1 # ordinal number when showing to the user
             show_list.append({'pers_num':person['pers_num'], 'pers_name':person['pers_name'], 'pers_bday':person['pers_bday']})
             insert_list.append({'pers_num':person['pers_num'], 'pers_id':person['pers_id'], 'user_id':person['user_id']})
-        
+        show_list_str = '\n'.join([f"{item['pers_num']} {item['pers_name']} {item['pers_bday']}" for item in show_list])
+
         # Inserting the list into delete_cache table
         for person in insert_list:
             sql.insert(table='delete_cache', data=person)
 
         # Incrementing step_id and sending a message with result
         sql.update(table='user_command', set={'step_id': 2}, where={'user_id': id})
-        send_msg(id, "Enter a number of a person you want to delete")
-        send_msg(id, show_list)
+        send_msg(id, f"Enter a number of a person you want to delete:\n{show_list_str}")
 
     elif step_id == 2: # Number of person to delete has come
 
@@ -176,12 +202,25 @@ def delete_person(id, text):
         show_start_msg(id)
 
 def this_month(id):
+    log_msg("MONTH PROCESS HAS STARTED")
     month = dt.now().strftime("%m")
     result = sql.select_all(table='person', where={"user_id": id, "STRFTIME('%m', pers_bday)": month})
-    return result
+    if len(result) == 0:
+        return None
+    else:
+        return '\n'.join([f"{item['pers_name']} {item['pers_bday']}" for item in result])
+
+def list_all(id):
+    log_msg("LIST ALL PROCESS HAS STARTED")
+    result = sql.select_all(table='person', where={"user_id": id})
+    if len(result) == 0:
+        return None
+    else:
+        return '\n'.join([f"{item['pers_name']} {item['pers_bday']}" for item in result])
 
 def show_start_msg(id):
-    msg = "/add - add a person, /delete - delete a person, /month - show birthdays of this month"
+    log_msg("START_MSG PROCESS HAS STARTED")
+    msg = "Command list: \n/add - add a person \n/delete - delete a person \n/month - show birthdays of this month \n/list or /all - show all people you've added"
     send_msg(id, msg)
 
 def send_msg(id, msg):
@@ -210,5 +249,5 @@ def istext(text):
     else:
         return False
 
-wf(m1)
+workflow(m1)
 

@@ -2,7 +2,7 @@ import sqlite3
 import requests
 import os
 
-# os.chdir('/home/unknown/Documents/birthday_bot')
+# os.chdir('/home/pdv/birthday_bot/')
 
 global TOKEN
 global URL
