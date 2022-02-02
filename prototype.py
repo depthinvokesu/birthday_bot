@@ -44,14 +44,14 @@ def workflow(msg):
             send_msg(id, "No one celebrates birthday this month")
 
     elif text in ('/list', '/all'):
-            sql.delete(table='user_command', where={'user_id':id})
-            sql.delete(table='add_cache', where={'user_id':id})
-            sql.delete(table='delete_cache', where={'user_id':id})            
-            response = list_all(id)
-            if response:
-                send_msg(id, response)
-            else:
-                send_msg(id, "You didn't add anybody yet")
+        sql.delete(table='user_command', where={'user_id':id})
+        sql.delete(table='add_cache', where={'user_id':id})
+        sql.delete(table='delete_cache', where={'user_id':id})            
+        response = list_all(id)
+        if response:
+            send_msg(id, response)
+        else:
+            send_msg(id, "You didn't add anybody yet")
 
     elif text == '/help':
         sql.delete(table='user_command', where={'user_id':id})

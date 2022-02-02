@@ -92,7 +92,7 @@ def workflow():
             sql.delete(table='user_command', where={'user_id':id})
             sql.delete(table='add_cache', where={'user_id':id})
             sql.delete(table='delete_cache', where={'user_id':id})
-            msg = "Hello, I am a Birthday bot! \nI can help you to keep track of your friends birthdays. \nJust tell me the dates and I will notify you once it's time to congratulate ;) \nCommand list: \n/add - add a person \n/delete - delete a person \n/month - show birthdays of this month \n/list or /all - show the people you've added"
+            msg = "Hello, I am a Birthday bot! \nI can help you to keep track of your friends birthdays. \nJust tell me the dates and I will notify you once it's time to congratulate ;) \nCommand list: \n/add - add a person \n/delete - delete a person \n/month - show birthdays of this month \n/list or /all - show all the people you've added"
             send_msg(id, msg)
 
         elif user_command: # Record with the id exists in user_command
@@ -256,7 +256,7 @@ def list_all(id):
 
 def show_start_msg(id):
     log_msg("START_MSG PROCESS HAS STARTED")
-    msg = "Command list: \n/add - add a person \n/delete - delete a person \n/month - show birthdays of this month \n/list or /all - show all people you've added"
+    msg = "Command list: \n/add - add a person \n/delete - delete a person \n/month - show birthdays of this month \n/list or /all - show all the people you've added"
     send_msg(id, msg)
 
 def send_msg(id, msg):
