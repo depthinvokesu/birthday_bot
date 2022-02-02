@@ -3,7 +3,7 @@ This bot can remind about your friends birthdays. Just tell a person and their d
 Check it out by https://t.me/yetanotherbirthdaybot
 
 ## Description
-- **SQLLtools.py** custom class to make SQLite queries. Support SELECT, INSERT, UPDATE and DELETE operations
+- **SQLtools.py** custom class to make SQLite queries. Support SELECT, INSERT, UPDATE and DELETE operations
 - **app.py** main Flask backend
 - **birthdaybot_db.sqlite3** database to keep data from users
 - **prototype.py** simulation of this bot working in console
