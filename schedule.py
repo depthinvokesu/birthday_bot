@@ -1,8 +1,6 @@
 import sqlite3
 import requests
-import os
-
-os.chdir('/home/pdv/birthday_bot/')
+from settings import log_msg
 
 global TOKEN
 global URL
@@ -18,7 +16,7 @@ def get_today_bdays():
     SELECT
       pers_name,
       pers_bday,
-      user_id,
+      chat_id,
       (STRFTIME('%Y') - STRFTIME('%Y', pers_bday)) as 'age'
     FROM
       person
@@ -31,20 +29,17 @@ def get_today_bdays():
     con.close()
     return result 
 
-def log_msg(msg):
-    print(msg)
-
-def send_msg(id, msg):
+def send_msg(chat_id, msg):
     url = URL + 'sendMessage'
-    debug_msg = f"id is: {id}, msg is: {msg}"
+    debug_msg = f"chat_id is: {chat_id}, msg is: {msg}"
     tg_msg = f"{msg}"
-    resp = requests.post(url, data={'chat_id':id, 'text':tg_msg, 'parse_mode':'HTML'}).json()
+    resp = requests.post(url, data={'chat_id':chat_id, 'text':tg_msg, 'parse_mode':'HTML'}).json()
     log_msg(f">>> Telegram response: {resp}")
     log_msg(f">>> Debug message: {debug_msg}")
 
 bday_people = get_today_bdays()
 for item in bday_people:
-    id = item['user_id']
+    chat_id = item['chat_id']
     msg = f"Today is {item['pers_name']}'s birthday. They've turned {item['age']} years! ({item['pers_bday']})"
-    send_msg(id, msg)
-print("")
+    send_msg(chat_id, msg)
+    log_msg(msg)

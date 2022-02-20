@@ -1,14 +1,8 @@
 bday_bot_venv/
 .vscode/
+.ignore/
 __pycache__
-0.1.py
-crontab.txt
-sql_tools.py
-sql_tools_1.0.py
-sql_tools_2.0.py
-sql_tools_3.0.py
-Script-6.sql
+birthdaybot_db.sqlite3
+debug.log
 temp.py
 token.txt
-test.sqlite3
-test_birthdaybot_db.sqlite3

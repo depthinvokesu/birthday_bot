@@ -1,6 +1,8 @@
 import sqlite3
 from sqlite3 import Error
 from typing import Optional
+from settings import DB_NAME
+
 
 def create_connection(db_file) -> Optional[sqlite3.Connection]:
     try:
@@ -22,11 +24,10 @@ query_create_user_table = """ CREATE TABLE IF NOT EXISTS user (
 query_create_person_table = """ CREATE TABLE IF NOT EXISTS person (
                                     pers_name VARCHAR,
                                     pers_bday VARCHAR,
-                                    user_id INTEGER,
-                                    FOREIGN KEY (user_id) REFERENCES user (chat_id) ON DELETE CASCADE
+                                    chat_id INTEGER
                                     );"""
 
-conn = create_connection("db1.sqlite3")
+conn = create_connection(DB_NAME)
 
 if conn is not None:
     create_table(conn, query_create_user_table)
