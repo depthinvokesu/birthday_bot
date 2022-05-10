@@ -1,34 +1,50 @@
 import sqlite3
 from typing import List, Dict, Tuple, Optional
 
+
+class Connection:
+
+        """Class to work with SQLite3 connection object"""
+
+        def __init__(self, db_name, callback_func):
+            self.db_name = db_name
+            self.callback_func = callback_func
+
+            self.conn = sqlite3.connect(self.db_name, check_same_thread=False)
+            self.conn.set_trace_callback(self.callback_func) # Set which func outputs logs
+            self.conn.row_factory = sqlite3.Row
+
+        def get_cursor(self) -> sqlite3.Cursor:
+            return self.conn.cursor()
+
+        def commit(self) -> None:
+            self.conn.commit()
+
+        def close(self) -> None:
+            self.conn.close()
+        
+
 class Cursor:
 
-    """Context manager to work with SQLite3 connection object"""
+    """Context manager to get a cursor from a given connection object"""
 
-    def __init__(self, db_name, callback_func, query):
-        self.db_name = db_name
-        self.callback_func = callback_func
-        self.query = query
-    
+    def __init__(self, connection):
+        self.conn = connection
+
     def __enter__(self):
-        self.conn = sqlite3.connect(self.db_name)
-        self.conn.set_trace_callback(self.callback_func) # Set which func outputs logs
-        self.conn.row_factory = sqlite3.Row
-        return self.conn.cursor()
+        return self.conn.get_cursor()
 
     def __exit__(self, type, value, traceback):
-        self.callback_func(self.query) # Output logs
         self.conn.commit()
-        self.conn.close()
-        
+
+
 
 class SQLtools:
 
     """Class containing basic SQL functions e.g. SELECT, UPDATE, INSERT, DELETE, REPLACE in SQLite3 implementation"""
     
-    def __init__(self, db_name, callback_func=print):
-        self.db_name = db_name
-        self.callback_func = callback_func
+    def __init__(self, connection):
+        self.conn = connection
 
     def select_all(self, table: str, where: dict, columns: list = ['*']) -> List[Dict]:
 
@@ -39,7 +55,7 @@ class SQLtools:
 
         q = f"SELECT {columns} FROM {table} WHERE {where_expr}"
 
-        with Cursor(self.db_name, self.callback_func, q) as cur:
+        with Cursor(self.conn) as cur:
             cur.execute(q, where_vals)
             result = [dict(row) for row in cur.fetchall()]
         return result
@@ -53,7 +69,7 @@ class SQLtools:
 
         q = f"SELECT {columns} FROM {table} WHERE {where_expr}"
 
-        with Cursor(self.db_name, self.callback_func, q) as cur:
+        with Cursor(self.conn) as cur:
             cur.execute(q, where_vals)
             result = cur.fetchone()
         return dict(result) if result else None
@@ -66,7 +82,7 @@ class SQLtools:
 
         q = f"DELETE FROM {table} WHERE {where_expr}"
 
-        with Cursor(self.db_name, self.callback_func, q) as cur:
+        with Cursor(self.conn) as cur:
             cur.execute(q, where_vals)
 
     def update(self, table: str, set: dict, where: dict) -> None:
@@ -78,7 +94,7 @@ class SQLtools:
 
         q = f"UPDATE {table} SET {set_expr} WHERE {where_expr}"
 
-        with Cursor(self.db_name, self.callback_func, q) as cur:
+        with Cursor(self.conn) as cur:
             cur.execute(q, [*set_vals, *where_vals])
 
     def insert(self, table: str, data: dict) -> None:
@@ -89,7 +105,7 @@ class SQLtools:
 
         q = f"INSERT INTO {table} ({keys}) VALUES ({qmarks})"
 
-        with Cursor(self.db_name, self.callback_func, q) as cur:
+        with Cursor(self.conn) as cur:
             cur.execute(q, vals)
 
     def replace(self, table: str, data: dict) -> None:
@@ -100,7 +116,7 @@ class SQLtools:
 
         q = f"REPLACE INTO {table} ({keys}) VALUES ({qmarks})"
 
-        with Cursor(self.db_name, self.callback_func, q) as cur:
+        with Cursor(self.conn) as cur:
             cur.execute(q, vals)
 
 
@@ -116,4 +132,9 @@ class SQLtools:
             vals = list(clause_data.values()) # str: "val1, val2 ..."
             expr = delim.join([f"{item}=?" for item in clause_data.keys()]) # str: "key1=? AND key2=?" or "key1=?, key2=?"
             return vals, expr
+
+
+
+
+
 

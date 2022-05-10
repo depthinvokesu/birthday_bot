@@ -1,71 +1,71 @@
 from datetime import datetime as dt
 import json
-from SQLtools import SQLtools
+from SQLtools import SQLtools, Connection
 import re
 from settings import URL, APP_PATH, DB_NAME, log_msg, StateId
 from typing import Tuple
 
-sql = SQLtools(db_name=DB_NAME, callback_func=log_msg)
-
+connection = Connection(DB_NAME, log_msg)
+sql = SQLtools(connection)
 
 update = {
     "message": {
         "text": "/all", 
-        "chat": {"id": "4", "username": "user13"}
+        "chat": {"id": "4", "username": "user4"}
     }
 }
 
 
 def workflow(update: dict) -> None:
 
-    err_msg, is_valid = validate_update(update)
-    if not is_valid:
-        return err_msg
+        err_msg, is_valid = validate_update(update)
+        if not is_valid:
+            return err_msg
 
-    msg = update["message"]
-    text = msg["text"]
-    chat_id = msg["chat"]["id"]
+        msg = update["message"]
+        text = msg["text"]
+        chat_id = msg["chat"]["id"]
 
-    if text == "/add":
-        sql.replace(
-            table="user",
-            data={"chat_id": chat_id, "state_id": StateId.ADD_ADDMSG.value},
-        )
-        add_person(chat_id, text)
-
-    elif text == "/delete":
-        sql.replace(
-            table="user",
-            data={"chat_id": chat_id, "state_id": StateId.DEL_DELMSG.value},
-        )
-        delete_person(chat_id, text)
-
-    elif text == "/month":
-        sql.replace(table="user", data={"chat_id": chat_id})
-        show_birthdays_of_this_month(chat_id)
-
-    elif text in ("/list", "/all"):
-        sql.replace(table="user", data={"chat_id": chat_id})
-        show_all_birhdays(chat_id)
-
-    elif text == "/help":
-        sql.replace(table="user", data={"chat_id": chat_id})
-        msg = "Hello, I am a Birthday bot! \nI can help you to keep track of your friends birthdays. \nJust tell me the dates and I will notify you once it's time to congratulate ;) \nCommand list: \n/add - add a person \n/delete - delete a person \n/month - show birthdays of this month \n/list or /all - show all the people you've added"
-        send_msg(chat_id, msg)
-
-    else:
-        user = sql.select_one(table="user", where={"chat_id": chat_id})
-        if not user:
-            show_start_msg(chat_id)
-
-        elif user["state_id"] in StateId.ADD.value:  # /add process is in progress
+        if text == "/add":
+            sql.replace(
+                table="user",
+                data={"chat_id": chat_id, "state_id": StateId.ADD_ADDMSG.value},
+            )
             add_person(chat_id, text)
 
-        elif user["state_id"] in StateId.DELETE.value:  # /delete process is in progress
+        elif text == "/delete":
+            sql.replace(
+                table="user",
+                data={"chat_id": chat_id, "state_id": StateId.DEL_DELMSG.value},
+            )
             delete_person(chat_id, text)
 
+        elif text == "/month":
+            sql.replace(table="user", data={"chat_id": chat_id})
+            show_birthdays_of_this_month(chat_id)
+
+        elif text in ("/list", "/all"):
+            sql.replace(table="user", data={"chat_id": chat_id})
+            show_all_birhdays(chat_id)
+
+        elif text == "/help":
+            sql.replace(table="user", data={"chat_id": chat_id})
+            msg = "Hello, I am a Birthday bot! \nI can help you to keep track of your friends birthdays. \nJust tell me the dates and I will notify you once it's time to congratulate ;) \nCommand list: \n/add - add a person \n/delete - delete a person \n/month - show birthdays of this month \n/list or /all - show all the people you've added"
+            send_msg(chat_id, msg)
+
         else:
-            show_start_msg(chat_id)
+            user = sql.select_one(table="user", where={"chat_id": chat_id})
+            if not user:
+                show_start_msg(chat_id)
+
+            elif user["state_id"] in StateId.ADD.value:  # /add process is in progress
+                add_person(chat_id, text)
+
+            elif user["state_id"] in StateId.DELETE.value:  # /delete process is in progress
+                delete_person(chat_id, text)
+
+            else:
+                show_start_msg(chat_id)
 
 
 def add_person(chat_id: str, text: str) -> None:
@@ -293,3 +293,4 @@ def validate_update(update: dict) -> Tuple[str, bool]:
 
 
 workflow(update)
+connection.close()

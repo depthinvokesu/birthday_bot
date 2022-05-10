@@ -1,16 +1,14 @@
 from datetime import datetime as dt
 import json
-from SQLtools import SQLtools
+from SQLtools import SQLtools, Connection
 import re
 from settings import URL, APP_PATH, DB_NAME, log_msg, StateId
 from typing import Tuple
-from flask import Flask, request
+from flask import Flask, request, g
 import requests
 
-sql = SQLtools(db_name=DB_NAME, callback_func=log_msg)
 
 app = Flask(__name__)
-
 
 @app.route(APP_PATH, methods=["POST"])
 def workflow() -> None:
@@ -26,34 +24,34 @@ def workflow() -> None:
     chat_id = msg["chat"]["id"]
 
     if text == "/add":
-        sql.replace(
+        g.sql.replace(
             table="user",
             data={"chat_id": chat_id, "state_id": StateId.ADD_ADDMSG.value},
         )
         add_person(chat_id, text)
 
     elif text == "/delete":
-        sql.replace(
+        g.sql.replace(
             table="user",
             data={"chat_id": chat_id, "state_id": StateId.DEL_DELMSG.value},
         )
         delete_person(chat_id, text)
 
     elif text == "/month":
-        sql.replace(table="user", data={"chat_id": chat_id})
+        g.sql.replace(table="user", data={"chat_id": chat_id})
         show_birthdays_of_this_month(chat_id)
 
     elif text in ("/list", "/all"):
-        sql.replace(table="user", data={"chat_id": chat_id})
+        g.sql.replace(table="user", data={"chat_id": chat_id})
         show_all_birhdays(chat_id)
 
     elif text == "/help":
-        sql.replace(table="user", data={"chat_id": chat_id})
+        g.sql.replace(table="user", data={"chat_id": chat_id})
         msg = "Hello, I am a Birthday bot! \nI can help you to keep track of your friends birthdays. \nJust tell me the dates and I will notify you once it's time to congratulate ;) \nCommand list: \n/add - add a person \n/delete - delete a person \n/month - show birthdays of this month \n/list or /all - show all the people you've added"
         send_msg(chat_id, msg)
 
     else:
-        user = sql.select_one(table="user", where={"chat_id": chat_id})
+        user = g.sql.select_one(table="user", where={"chat_id": chat_id})
         if not user:
             show_start_msg(chat_id)
 
@@ -72,13 +70,13 @@ def workflow() -> None:
 def add_person(chat_id: str, text: str) -> None:
 
     log_msg("ADD PROCESS HAS STARTED")
-    state_id = sql.select_one(table="user", where={"chat_id": chat_id})["state_id"]
+    state_id = g.sql.select_one(table="user", where={"chat_id": chat_id})["state_id"]
     log_msg(f"state id is {state_id}")
 
     if state_id == StateId.ADD_ADDMSG.value:  # add message has come
 
         # Increment state_id and send a message with result
-        sql.update(
+        g.sql.update(
             table="user",
             set={"state_id": StateId.ADD_PERSNAME.value},
             where={"chat_id": chat_id},
@@ -94,7 +92,7 @@ def add_person(chat_id: str, text: str) -> None:
 
         # Insert the input to the cache, increment state_id and send a message with result
         state_data = {"pers_name": text}
-        sql.update(
+        g.sql.update(
             table="user",
             set={
                 "state_id": StateId.ADD_PERSBDAY.value,
@@ -125,33 +123,33 @@ def add_person(chat_id: str, text: str) -> None:
         state_data.update({"pers_bday": date_sql, "chat_id": chat_id})
 
         # Insert data to person table
-        sql.insert(table="person", data=state_data)
+        g.sql.insert(table="person", data=state_data)
 
         # Delete cache and send final message
-        sql.replace(table="user", data={"chat_id": chat_id})
+        g.sql.replace(table="user", data={"chat_id": chat_id})
         send_msg(chat_id, f"{state_data['pers_name']}, born {date_frnd} has been added")
     else:
-        sql.replace(table="user", data={"chat_id": chat_id})
+        g.sql.replace(table="user", data={"chat_id": chat_id})
         show_start_msg(chat_id)
 
 
 def delete_person(chat_id: str, text: str) -> None:
 
     log_msg("DELETE PROCESS HAS STARTED")
-    state_id = sql.select_one(table="user", where={"chat_id": chat_id})["state_id"]
+    state_id = g.sql.select_one(table="user", where={"chat_id": chat_id})["state_id"]
     log_msg(f"step id is {state_id}")
 
     if state_id == StateId.DEL_DELMSG.value:  # delete message has come
 
         # Create lists of people added by current user
-        people_list = sql.select_all(
+        people_list = g.sql.select_all(
             table="person",
             where={"chat_id": chat_id},
             columns=["rowid as pers_id", "*"],
         )  # [{pers_name, pers_bday, chat_id, pers_id}, ...]
 
         if len(people_list) == 0:  # there is no one in the list
-            sql.replace(table="user", data={"chat_id": chat_id})
+            g.sql.replace(table="user", data={"chat_id": chat_id})
             send_msg(chat_id, "There is no one to delete")
             show_start_msg(chat_id)
             return
@@ -169,7 +167,7 @@ def delete_person(chat_id: str, text: str) -> None:
         )
 
         # Incremente state_id and send a message with result
-        sql.update(
+        g.sql.update(
             table="user",
             set={
                 "state_id": StateId.DEL_ORDNUM.value,
@@ -203,23 +201,23 @@ def delete_person(chat_id: str, text: str) -> None:
             return
 
         # Delete target person from person table
-        sql.delete(table="person", where={"rowid": person_to_delete["pers_id"]})
+        g.sql.delete(table="person", where={"rowid": person_to_delete["pers_id"]})
 
         # Delete cache and send final message
-        sql.replace(table="user", data={"chat_id": chat_id})
+        g.sql.replace(table="user", data={"chat_id": chat_id})
         send_msg(
             chat_id,
             f"{person_to_delete['pers_name']} born {person_to_delete['pers_bday']} has been deleted",
         )
     else:
-        sql.replace(table="user", data={"chat_id": chat_id})
+        g.sql.replace(table="user", data={"chat_id": chat_id})
         show_start_msg(chat_id)
 
 
 def show_birthdays_of_this_month(chat_id: str) -> None:
     log_msg("MONTH PROCESS HAS STARTED")
     month = dt.now().strftime("%m")
-    result = sql.select_all(
+    result = g.sql.select_all(
         table="person", where={"chat_id": chat_id, "STRFTIME('%m', pers_bday)": month}
     )
     if len(result) == 0:
@@ -231,7 +229,7 @@ def show_birthdays_of_this_month(chat_id: str) -> None:
 
 def show_all_birhdays(chat_id: str) -> None:
     log_msg("LIST ALL PROCESS HAS STARTED")
-    result = sql.select_all(table="person", where={"chat_id": chat_id})
+    result = g.sql.select_all(table="person", where={"chat_id": chat_id})
     if len(result) == 0:
         send_msg(chat_id, "You didn't add anybody yet")
     else:
@@ -255,7 +253,7 @@ def send_msg(chat_id: str, msg: str) -> None:
 
 
 def get_state_data(chat_id: str) -> dict:
-    state_data_str = sql.select_one(table="user", where={"chat_id": chat_id})[
+    state_data_str = g.sql.select_one(table="user", where={"chat_id": chat_id})[
         "state_data"
     ]
     return json.loads(state_data_str)
@@ -298,5 +296,24 @@ def validate_update(update: dict) -> Tuple[str, bool]:
     return None, True
 
 
+@app.before_request
+def get_db():
+    """Connect to database"""
+    if "db" not in g:
+        g.connection = Connection(DB_NAME, log_msg)
+        g.sql = SQLtools(g.connection)
+
+
+@app.teardown_request
+def close_db(e=None):
+    """If this request connected to the database, close the connection."""
+    connection = g.pop("connection", None)
+    sql = g.pop("sql", None)
+    if connection is not None:
+        connection.close()
+
+
+
 if __name__ == "__main__":
     app.run()
+
