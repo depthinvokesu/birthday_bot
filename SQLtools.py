@@ -10,7 +10,7 @@ class Connection:
             self.db_name = db_name
             self.callback_func = callback_func
 
-            self.conn = sqlite3.connect(self.db_name, check_same_thread=False)
+            self.conn = sqlite3.connect(self.db_name)
             self.conn.set_trace_callback(self.callback_func) # Set which func outputs logs
             self.conn.row_factory = sqlite3.Row
 
